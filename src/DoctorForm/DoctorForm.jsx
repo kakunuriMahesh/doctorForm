@@ -9,9 +9,10 @@ const DoctorForm = () => {
     clinicEmail: "",
     personalPhone: "",
     personalEmail: "",
+    sameAsClinic: "no", 
     clinicAddress: "",
     clinicAvailability: "",
-    domainOption: "no", // Default value is "no"
+    domainOption: "no", 
     domainName: "",
     publications: "",
     articles: "",
@@ -19,13 +20,25 @@ const DoctorForm = () => {
   });
 
   const [isLoading, setIsLoading] = useState(false);
+  const [color, setColor] = useState(false);
 
-  // Handle form submission
   const handleSubmit = async (event) => {
     event.preventDefault();
     setIsLoading(true);
 
-    console.log("Submitting form data:", formData);
+    // Validation
+    if (formData.sameAsClinic === "no") {
+      if (formData.personalPhone === formData.clinicPhone) {
+        toast.error("Personal Phone cannot be the same as Clinic Phone.");
+        setIsLoading(false);
+        return;
+      }
+      if (formData.personalEmail === formData.clinicEmail) {
+        toast.error("Personal Email cannot be the same as Clinic Email.");
+        setIsLoading(false);
+        return;
+      }
+    }
 
     const scriptURL =
       "https://script.google.com/macros/s/AKfycbz7kKU38kFzpaoE26OlsMihWlvEgUY9ur-Uf7fbI-bnYp_4Fee2mrWW9aJOBd4uuGhi/exec";
@@ -36,11 +49,6 @@ const DoctorForm = () => {
         formDataToSubmit.append(key, formData[key]);
       });
 
-      console.log(
-        "FormData prepared for submission:",
-        Object.fromEntries(formDataToSubmit)
-      );
-
       const response = await fetch(scriptURL, {
         method: "POST",
         body: formDataToSubmit,
@@ -49,7 +57,6 @@ const DoctorForm = () => {
       const jsonResponse = await response.json();
 
       if (response.ok) {
-        console.log("Server response:", jsonResponse);
         toast.success("Doctor details successfully submitted!");
         setFormData({
           doctorName: "",
@@ -57,6 +64,7 @@ const DoctorForm = () => {
           clinicEmail: "",
           personalPhone: "",
           personalEmail: "",
+          sameAsClinic: "no",
           clinicAddress: "",
           clinicAvailability: "",
           domainOption: "no",
@@ -69,7 +77,6 @@ const DoctorForm = () => {
         throw new Error("Failed to submit the form");
       }
     } catch (error) {
-      console.error("Submission error:", error);
       toast.error("Error submitting the form. Please try again.");
     } finally {
       setIsLoading(false);
@@ -78,11 +85,28 @@ const DoctorForm = () => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
-
-    if (name === "domainOption" && value === "no") {
-      setFormData({ ...formData, domainOption: "no", domainName: "" });
-    }
+    setFormData((prevData) => {
+      if (name === "sameAsClinic") {
+        if (value === "yes") {
+          setColor(true);
+          return {
+            ...prevData,
+            sameAsClinic: value,
+            personalPhone: prevData.clinicPhone,
+            personalEmail: prevData.clinicEmail,
+          };
+        } else {
+          setColor(false);
+          return {
+            ...prevData,
+            sameAsClinic: value,
+            personalPhone: "",
+            personalEmail: "",
+          };
+        }
+      }
+      return { ...prevData, [name]: value };
+    });
   };
 
   return (
@@ -94,9 +118,9 @@ const DoctorForm = () => {
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Doctor Name</label>
           <input
-            placeholder="Dr. John Doe"
             type="text"
             name="doctorName"
+            placeholder="Name of the doctor"
             value={formData.doctorName}
             onChange={handleChange}
             required
@@ -107,12 +131,12 @@ const DoctorForm = () => {
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Clinic Phone</label>
           <input
-            placeholder="123-456-7890"
-            maxLength={10}
             type="number"
             name="clinicPhone"
+            placeholder="Phone number of the clinic"
             value={formData.clinicPhone}
             onChange={handleChange}
+            maxLength={10}
             required
             className="w-full border rounded px-3 py-2"
           />
@@ -121,9 +145,9 @@ const DoctorForm = () => {
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Clinic Email</label>
           <input
-            placeholder="Email"
             type="email"
             name="clinicEmail"
+            placeholder="Email of the clinic"
             value={formData.clinicEmail}
             onChange={handleChange}
             required
@@ -131,37 +155,93 @@ const DoctorForm = () => {
           />
         </div>
 
+        {/*  */}
+
+        <div className="mb-4 text-left">
+          <label className="block font-medium mb-1">
+            Are personal details same as clinic?
+          </label>
+          <div className="flex items-center space-x-4">
+            <label>
+              <input
+                type="radio"
+                name="sameAsClinic"
+                value="yes"
+                checked={formData.sameAsClinic === "yes"}
+                onChange={handleChange}
+                className="mr-2"
+              />
+              Yes
+            </label>
+            <label>
+              <input
+                type="radio"
+                name="sameAsClinic"
+                value="no"
+                checked={formData.sameAsClinic === "no"}
+                onChange={handleChange}
+                className="mr-2"
+              />
+              No
+            </label>
+          </div>
+        </div>
+
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Personal Phone</label>
           <input
-            type="number"
-            placeholder="123-456-7890"
+            type="text" 
             name="personalPhone"
-            maxLength={10}
+            placeholder="Your personal phone number"
             value={formData.personalPhone}
-            onChange={handleChange}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value.length <= 10 && /^\d*$/.test(value)) {
+                handleChange(e);
+              }
+            }}
+            maxLength={10} 
             required
-            className="w-full border rounded px-3 py-2"
+            className={`w-full border rounded px-3 py-2 ${
+              color
+                ? "bg-gray-200 outline-gray-400 border-2 border-gray-200 text-gray-400"
+                : ""
+            }`}
+            disabled={formData.sameAsClinic === "yes"}
           />
         </div>
 
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Personal Email</label>
+          
           <input
-            type="email"
-            placeholder="Email"
+            type="email" 
             name="personalEmail"
+            placeholder="Your personal email"
             value={formData.personalEmail}
-            onChange={handleChange}
+            onChange={(e) => {
+              const value = e.target.value;
+              if (value.length <= 10 && /^\d*$/.test(value)) {
+                handleChange(e);
+              }
+            }}
+            maxLength={10} 
             required
-            className="w-full border rounded px-3 py-2"
+            className={`w-full border rounded px-3 py-2 ${
+              color
+                ? "bg-gray-200 outline-gray-400 border-2 border-gray-200 text-gray-400"
+                : ""
+            }`}
+            disabled={formData.sameAsClinic === "yes"}
           />
         </div>
+
+        {/*  */}
 
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Clinic Address</label>
           <textarea
-            placeholder="123 Street, City, Country"
+            placeholder="Street, City, Country"
             name="clinicAddress"
             value={formData.clinicAddress}
             onChange={handleChange}
@@ -173,7 +253,7 @@ const DoctorForm = () => {
         <div className="mb-4 text-left">
           <label className="block font-medium mb-1">Clinic Availability</label>
           <input
-            placeholder="Mon-Fri: 9am-5pm"
+            placeholder="Ex: Mon-Fri: 9am-5pm"
             type="text"
             name="clinicAvailability"
             value={formData.clinicAvailability}
@@ -229,37 +309,43 @@ const DoctorForm = () => {
         )}
 
         <div className="mb-4 text-left">
-          <label className="block font-medium mb-1">Publications</label>
+          <label className="block font-medium mb-1">
+            Publications
+            <span className=" text-gray-400 italic text-sm"> (optional)</span>
+          </label>
           <textarea
-          placeholder="List your publications (e.g. Journal A, Journal B, etc.)"
+            placeholder="share your drive link"
             name="publications"
             value={formData.publications}
             onChange={handleChange}
-            required
             className="w-full border rounded px-3 py-2"
           />
         </div>
 
         <div className="mb-4 text-left text-left">
-          <label className="block font-medium mb-1">Articles</label>
+          <label className="block font-medium mb-1">
+            Articles
+            <span className=" text-gray-400 italic text-sm"> (optional)</span>
+          </label>
           <textarea
-            placeholder="List your articles (e.g. Article A, Article B, etc.)"
+            placeholder="share your drive link"
             name="articles"
             value={formData.articles}
             onChange={handleChange}
-            required
             className="w-full border rounded px-3 py-2"
           />
         </div>
 
         <div className="mb-4 text-left">
-          <label className="block font-medium mb-1">Extra Notes</label>
+          <label className="block font-medium mb-1">
+            Extra Notes
+            <span className=" text-gray-400 italic text-sm"> (optional)</span>
+          </label>
           <textarea
-            placeholder="Any extra notes you'd like to add"
+            placeholder="share your drive link"
             name="extraNotes"
             value={formData.extraNotes}
             onChange={handleChange}
-            required
             className="w-full border rounded px-3 py-2"
           />
         </div>
@@ -271,7 +357,6 @@ const DoctorForm = () => {
           {isLoading ? "Submitting..." : "Submit"}
         </button>
       </form>
-
       <ToastContainer
         position="top-right"
         autoClose={5000}
